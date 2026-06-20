@@ -483,6 +483,55 @@
                         <textarea class="form-input" id="cust-address" placeholder="Enter your full delivery address in Tallarevu/Kakinada" required></textarea>
                     </div>
                 </div>
+
+                <div class="cart-options-section">
+                    <span class="cart-section-title">3. Select Payment Method</span>
+                    
+                    <!-- Alert banner for advance payment (peeled/butterfly) -->
+                    <div class="payment-alert-banner" id="payment-alert" style="display: none;">
+                        ⚠️ Peeled, and Butterfly Cut orders require advance payment. Cash on Delivery is not available for these services.
+                    </div>
+
+                    <div class="payment-methods-group">
+                        <label class="payment-method-option" id="cod-option-wrapper">
+                            <input type="radio" name="payment-method" value="cod" checked id="pay-cod">
+                            <span class="pay-option-card">
+                                <span class="pay-icon">💵</span>
+                                <span class="pay-label">Cash on Delivery (COD)</span>
+                            </span>
+                        </label>
+                        <label class="payment-method-option">
+                            <input type="radio" name="payment-method" value="upi" id="pay-upi">
+                            <span class="pay-option-card">
+                                <span class="pay-icon">📱</span>
+                                <span class="pay-label">Online Payment (UPI)</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- UPI Details Area (Hidden by default, shown when UPI selected) -->
+                    <div class="upi-details-container" id="upi-details-box" style="display: none;">
+                        <p class="upi-instruction">Scan QR Code or pay directly to the UPI ID:</p>
+                        
+                        <div class="upi-id-box">
+                            <span id="upi-id-text">9573039197@ybl</span>
+                            <button type="button" class="copy-upi-btn" id="copy-upi-btn" title="Copy UPI ID">Copy</button>
+                        </div>
+                        
+                        <div class="upi-qr-wrapper">
+                            <img id="upi-qr-code" src="" alt="UPI Payment QR Code">
+                        </div>
+
+                        <div class="form-group" style="margin-top: 12px;">
+                            <label>Upload Payment Screenshot *</label>
+                            <div class="file-upload-wrapper">
+                                <input type="file" id="payment-screenshot" accept="image/*" class="file-upload-input">
+                                <button type="button" class="file-upload-custom-btn" id="screenshot-custom-btn">Choose Image</button>
+                                <span class="file-upload-filename" id="screenshot-filename">No file chosen</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

@@ -250,6 +250,10 @@ document.addEventListener('DOMContentLoaded', () => {
             cartSubtotalEl.textContent = `₹${subtotal}`;
             cartTotalEl.textContent = `₹${subtotal}`; // Free delivery & prep service
 
+            // Update QR Code and check prep service limitations
+            updateUPIQRCode(subtotal);
+            handlePrepServiceChange();
+
             // Add Event Listeners to Cart Drawer Buttons
             addCartControlsListeners();
         }
@@ -296,7 +300,120 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // -------------------------------------------------------------------------
-    // 4. WHATSAPP ORDER GENERATOR
+    // 4. PAYMENT AND UPI INTEGRATION LOGIC
+    // -------------------------------------------------------------------------
+    let paymentMethod = 'cod';
+    const payCodRadio = document.getElementById('pay-cod');
+    const payUpiRadio = document.getElementById('pay-upi');
+    const upiDetailsBox = document.getElementById('upi-details-box');
+    const prepServiceSelect = document.getElementById('prep-service');
+    const paymentAlert = document.getElementById('payment-alert');
+    const codOptionWrapper = document.getElementById('cod-option-wrapper');
+
+    function handlePaymentMethodChange(method) {
+        paymentMethod = method;
+        if (method === 'upi') {
+            upiDetailsBox.style.display = 'block';
+        } else {
+            upiDetailsBox.style.display = 'none';
+        }
+    }
+
+    if (payCodRadio && payUpiRadio) {
+        payCodRadio.addEventListener('change', () => handlePaymentMethodChange('cod'));
+        payUpiRadio.addEventListener('change', () => handlePaymentMethodChange('upi'));
+    }
+
+    function handlePrepServiceChange() {
+        if (!prepServiceSelect) return;
+        const selectedService = prepServiceSelect.value;
+        if (selectedService === 'peeled' || selectedService === 'butterfly') {
+            // Show alert banner
+            paymentAlert.style.display = 'block';
+            // Hide & disable COD
+            if (codOptionWrapper) {
+                codOptionWrapper.style.display = 'none';
+            }
+            if (payCodRadio) {
+                payCodRadio.disabled = true;
+            }
+            // Auto-select UPI
+            if (payUpiRadio) {
+                payUpiRadio.checked = true;
+                handlePaymentMethodChange('upi');
+            }
+        } else {
+            // Hide alert banner
+            paymentAlert.style.display = 'none';
+            // Show & enable COD
+            if (codOptionWrapper) {
+                codOptionWrapper.style.display = 'block';
+            }
+            if (payCodRadio) {
+                payCodRadio.disabled = false;
+            }
+        }
+    }
+
+    if (prepServiceSelect) {
+        prepServiceSelect.addEventListener('change', handlePrepServiceChange);
+    }
+
+    // Dynamic QR code generation
+    function updateUPIQRCode(amount) {
+        const upiId = '9573039197@ybl';
+        const merchantName = 'FFC Sea Foods';
+        const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amount}&cu=INR`;
+        const qrCodeImg = document.getElementById('upi-qr-code');
+        if (qrCodeImg) {
+            qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiLink)}`;
+        }
+    }
+
+    // Copy to clipboard for UPI ID
+    const copyUpiBtn = document.getElementById('copy-upi-btn');
+    const upiIdTextEl = document.getElementById('upi-id-text');
+
+    if (copyUpiBtn && upiIdTextEl) {
+        copyUpiBtn.addEventListener('click', () => {
+            const upiId = upiIdTextEl.textContent;
+            navigator.clipboard.writeText(upiId).then(() => {
+                const originalText = copyUpiBtn.textContent;
+                copyUpiBtn.textContent = 'Copied!';
+                copyUpiBtn.style.backgroundColor = 'var(--primary)';
+                setTimeout(() => {
+                    copyUpiBtn.textContent = originalText;
+                    copyUpiBtn.style.backgroundColor = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        });
+    }
+
+    // Custom screenshot uploader buttons
+    const screenshotInput = document.getElementById('payment-screenshot');
+    const screenshotCustomBtn = document.getElementById('screenshot-custom-btn');
+    const screenshotFilename = document.getElementById('screenshot-filename');
+
+    if (screenshotCustomBtn && screenshotInput) {
+        screenshotCustomBtn.addEventListener('click', () => {
+            screenshotInput.click();
+        });
+    }
+
+    if (screenshotInput && screenshotFilename) {
+        screenshotInput.addEventListener('change', () => {
+            if (screenshotInput.files && screenshotInput.files.length > 0) {
+                screenshotFilename.textContent = screenshotInput.files[0].name;
+            } else {
+                screenshotFilename.textContent = 'No file chosen';
+            }
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. WHATSAPP ORDER GENERATOR
     // -------------------------------------------------------------------------
     const whatsappCheckoutBtn = document.getElementById('whatsapp-checkout-btn');
 
@@ -324,6 +441,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // UPI Advance Payment Verification
+        if (paymentMethod === 'upi') {
+            if (!screenshotInput || !screenshotInput.files || screenshotInput.files.length === 0) {
+                alert('Peeled, and Butterfly Cut orders require advance payment. Please complete your payment via UPI and upload the screenshot.');
+                return;
+            }
+        }
+
         // Format Prep Service Text
         const prepServiceLabels = {
             'none': 'None (Whole Prawns with Shell)',
@@ -349,6 +474,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // WhatsApp Business Contact Numbers from flyer
         const storeNumber = '918985734989'; // Primary Whatsapp number
 
+        // Format Payment Text
+        let paymentText = '';
+        if (paymentMethod === 'upi') {
+            const fileName = screenshotInput.files[0] ? screenshotInput.files[0].name : 'Uploaded';
+            paymentText += `• *Method:* Online UPI Payment\n`;
+            paymentText += `• *UPI ID:* 9573039197@ybl\n`;
+            paymentText += `• *Payment Status:* Pending Verification\n`;
+            paymentText += `• *Screenshot:* ${fileName}\n`;
+        } else {
+            paymentText += `• *Method:* Cash on Delivery (COD)\n`;
+        }
+
         // Build Custom Message
         let message = `🦐 *NEW ORDER - FFC SEA FOODS* 🦐\n`;
         message += `===============================\n\n`;
@@ -363,12 +500,19 @@ document.addEventListener('DOMContentLoaded', () => {
         message += `🔪 *Prep & Custom Cutting:*\n`;
         message += `• *Service Choice:* ${prepLabel}\n`;
         message += `• *Cost:* FREE\n\n`;
+
+        message += `💳 *Payment Information:*\n`;
+        message += paymentText + `\n`;
         
         message += `===============================\n`;
         message += `💰 *Grand Total:* *₹${grandTotal}*\n`;
         message += `🚚 *Delivery:* FREE (Tallarevu / Kakinada)\n`;
         message += `===============================\n\n`;
         message += `Thank you for ordering with FFC Sea Foods! Please reply to confirm and process this order.`;
+
+        if (paymentMethod === 'upi') {
+            message += `\n\n*⚠️ PLEASE ATTACH YOUR PAYMENT SCREENSHOT TO THIS WHATSAPP CHAT.*`;
+        }
 
         // Encode Message
         const encodedMessage = encodeURIComponent(message);
