@@ -793,6 +793,44 @@ img {
     height: 16px;
 }
 
+/* Weight Selector (Half kg / 1 KG / 2 KG) */
+.weight-selector {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+    border-radius: 50px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-main);
+}
+
+.weight-btn {
+    flex: 1;
+    padding: 8px 4px;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    border-radius: 50px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.weight-btn:hover {
+    background-color: var(--bg-blue-light);
+    color: var(--secondary);
+}
+
+.weight-btn.active {
+    background-color: var(--secondary);
+    color: var(--text-light);
+    box-shadow: var(--shadow-sm);
+}
+
 /* Services Section */
 .services-section {
     padding: 40px 0;
@@ -1466,15 +1504,15 @@ img {
     font-size: 18px;
 }
 
-/* Service Options, Custom Forms in Cart */
+/* Service Options, Custom Forms in Cart - Vertical Layout */
 .cart-options-section {
     background-color: var(--bg-blue-light);
     border-radius: var(--border-radius-md);
-    padding: 16px;
-    margin-bottom: 20px;
+    padding: 14px;
+    margin-bottom: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .cart-section-title {
@@ -1484,12 +1522,21 @@ img {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--secondary);
+    display: block;
+    margin-bottom: 6px;
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+}
+
+.form-group-inline {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
 }
 
 .form-group label {

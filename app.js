@@ -110,30 +110,34 @@ document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------------------
     let cart = [];
 
-    // Local Product Quantities (in product section)
-    const productQuantities = {
-        'prawn-100': 1,
-        'prawn-150': 1,
-        'prawn-200': 1
+    // Selected weights per product (default 0.5 = half kg)
+    const selectedWeights = {
+        'prawn-100': 0.5,
+        'prawn-150': 0.5,
+        'prawn-200': 0.5
+    };
+    const selectedWeightLabels = {
+        'prawn-100': '½ KG',
+        'prawn-150': '½ KG',
+        'prawn-200': '½ KG'
     };
 
-    // Plus/Minus handlers for Product Cards
-    document.querySelectorAll('.qty-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    // Weight Selector Button handlers
+    document.querySelectorAll('.weight-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
             const productId = btn.getAttribute('data-product-id');
-            const qtyValEl = document.getElementById(`qty-${productId}`);
-            let currentQty = productQuantities[productId];
+            const weight = parseFloat(btn.getAttribute('data-weight'));
+            const weightLabel = btn.getAttribute('data-weight-label');
 
-            if (btn.classList.contains('plus')) {
-                currentQty += 1;
-            } else if (btn.classList.contains('minus')) {
-                if (currentQty > 1) {
-                    currentQty -= 1;
-                }
+            // Deactivate siblings
+            const selectorWrapper = document.getElementById(`weight-${productId}`);
+            if (selectorWrapper) {
+                selectorWrapper.querySelectorAll('.weight-btn').forEach(b => b.classList.remove('active'));
             }
+            btn.classList.add('active');
 
-            productQuantities[productId] = currentQty;
-            qtyValEl.textContent = currentQty;
+            selectedWeights[productId] = weight;
+            selectedWeightLabels[productId] = weightLabel;
         });
     });
 
@@ -142,45 +146,55 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-id');
             const name = btn.getAttribute('data-name');
-            const price = parseInt(btn.getAttribute('data-price'));
+            const pricePerKg = parseInt(btn.getAttribute('data-price'));
             const img = btn.getAttribute('data-img');
             const count = btn.getAttribute('data-count');
-            const qtyToAdd = productQuantities[id];
+            const weight = selectedWeights[id] || 0.5;
+            const weightLabel = selectedWeightLabels[id] || '½ KG';
+            const calculatedPrice = Math.round(pricePerKg * weight);
 
-            addToCart(id, name, price, img, count, qtyToAdd);
-            
-            // Reset quantity display back to 1
-            productQuantities[id] = 1;
-            document.getElementById(`qty-${id}`).textContent = '1';
+            addToCart(id, name, pricePerKg, img, count, weight, weightLabel, calculatedPrice);
+
+            // Reset weight selector back to ½ KG
+            selectedWeights[id] = 0.5;
+            selectedWeightLabels[id] = '½ KG';
+            const selectorWrapper = document.getElementById(`weight-${id}`);
+            if (selectorWrapper) {
+                selectorWrapper.querySelectorAll('.weight-btn').forEach((b, i) => {
+                    b.classList.toggle('active', i === 0);
+                });
+            }
 
             // Visual feedback on Cart bubble
             animateCartIcon();
         });
     });
 
-    function addToCart(id, name, price, img, count, qty) {
-        const existingItem = cart.find(item => item.id === id);
+    function addToCart(id, name, pricePerKg, img, count, weight, weightLabel, calculatedPrice) {
+        // Use a composite key so same prawn with different weight is separate
+        const cartKey = `${id}-${weight}`;
+        const existingItem = cart.find(item => item.cartKey === cartKey);
         
         if (existingItem) {
-            existingItem.qty += qty;
+            existingItem.qty += 1;
         } else {
-            cart.push({ id, name, price, img, count, qty });
+            cart.push({ cartKey, id, name, pricePerKg, price: calculatedPrice, img, count, weight, weightLabel, qty: 1 });
         }
         
         updateCartUI();
     }
 
-    function removeFromCart(id) {
-        cart = cart.filter(item => item.id !== id);
+    function removeFromCart(cartKey) {
+        cart = cart.filter(item => item.cartKey !== cartKey);
         updateCartUI();
     }
 
-    function updateCartItemQty(id, newQty) {
-        const item = cart.find(item => item.id === id);
+    function updateCartItemQty(cartKey, newQty) {
+        const item = cart.find(item => item.cartKey === cartKey);
         if (item) {
             item.qty = parseInt(newQty);
             if (item.qty <= 0) {
-                removeFromCart(id);
+                removeFromCart(cartKey);
                 return;
             }
         }
@@ -227,17 +241,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         <img src="${item.img}" alt="${item.name}" class="cart-item-img">
                         <div class="cart-item-info">
                             <span class="cart-item-name">${item.name.replace('Vannamei Prawns ', '')}</span>
-                            <p class="cart-item-count">${item.count}</p>
+                            <p class="cart-item-count">${item.count} &bull; <strong>${item.weightLabel}</strong></p>
                             <div class="cart-item-price-row">
                                 <span class="cart-item-price">₹${item.price * item.qty}</span>
                                 <div class="cart-item-qty">
-                                    <button class="cart-item-qty-btn cart-qty-minus" data-id="${item.id}">-</button>
+                                    <button class="cart-item-qty-btn cart-qty-minus" data-cartkey="${item.cartKey}">-</button>
                                     <span class="cart-item-qty-val">${item.qty}</span>
-                                    <button class="cart-item-qty-btn cart-qty-plus" data-id="${item.id}">+</button>
+                                    <button class="cart-item-qty-btn cart-qty-plus" data-cartkey="${item.cartKey}">+</button>
                                 </div>
                             </div>
                         </div>
-                        <button class="cart-item-remove" data-id="${item.id}" aria-label="Remove item">&times;</button>
+                        <button class="cart-item-remove" data-cartkey="${item.cartKey}" aria-label="Remove item">&times;</button>
                     </div>
                 `;
             });
@@ -263,10 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Minus Buttons in Cart
         document.querySelectorAll('.cart-qty-minus').forEach(btn => {
             btn.addEventListener('click', () => {
-                const id = btn.getAttribute('data-id');
-                const item = cart.find(i => i.id === id);
+                const cartKey = btn.getAttribute('data-cartkey');
+                const item = cart.find(i => i.cartKey === cartKey);
                 if (item) {
-                    updateCartItemQty(id, item.qty - 1);
+                    updateCartItemQty(cartKey, item.qty - 1);
                 }
             });
         });
@@ -274,10 +288,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Plus Buttons in Cart
         document.querySelectorAll('.cart-qty-plus').forEach(btn => {
             btn.addEventListener('click', () => {
-                const id = btn.getAttribute('data-id');
-                const item = cart.find(i => i.id === id);
+                const cartKey = btn.getAttribute('data-cartkey');
+                const item = cart.find(i => i.cartKey === cartKey);
                 if (item) {
-                    updateCartItemQty(id, item.qty + 1);
+                    updateCartItemQty(cartKey, item.qty + 1);
                 }
             });
         });
@@ -285,8 +299,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Remove Buttons in Cart
         document.querySelectorAll('.cart-item-remove').forEach(btn => {
             btn.addEventListener('click', () => {
-                const id = btn.getAttribute('data-id');
-                removeFromCart(id);
+                const cartKey = btn.getAttribute('data-cartkey');
+                removeFromCart(cartKey);
             });
         });
     }
@@ -467,8 +481,8 @@ document.addEventListener('DOMContentLoaded', () => {
             grandTotal += itemTotal;
             itemsText += `${index + 1}. *${item.name}*\n`;
             itemsText += `   Count size: ${item.count}\n`;
-            itemsText += `   Quantity: ${item.qty} KG\n`;
-            itemsText += `   Price: ₹${item.price}/KG (Total: ₹${itemTotal})\n\n`;
+            itemsText += `   Weight: ${item.weightLabel} x ${item.qty} = ${(item.weight * item.qty).toFixed(1)} KG\n`;
+            itemsText += `   Price: ₹${item.pricePerKg}/KG → ₹${item.price} for ${item.weightLabel} x${item.qty} = ₹${itemTotal}\n\n`;
         });
 
         // WhatsApp Business Contact Numbers from flyer
