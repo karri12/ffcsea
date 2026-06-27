@@ -122,6 +122,12 @@ document.addEventListener('DOMContentLoaded', () => {
         'prawn-200': '½ KG'
     };
 
+    const basePrices = {
+        'prawn-100': 300,
+        'prawn-150': 250,
+        'prawn-200': 200
+    };
+
     // Weight Selector Button handlers
     document.querySelectorAll('.weight-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -138,6 +144,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             selectedWeights[productId] = weight;
             selectedWeightLabels[productId] = weightLabel;
+
+            // Update price display tag
+            const basePrice = basePrices[productId];
+            if (basePrice) {
+                const calculatedPrice = Math.round(basePrice * weight);
+                const priceTag = document.getElementById(`price-tag-${productId}`);
+                if (priceTag) {
+                    priceTag.innerHTML = `₹${calculatedPrice} <span>/ ${weightLabel}</span>`;
+                }
+            }
         });
     });
 
@@ -155,33 +171,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             addToCart(id, name, pricePerKg, img, count, weight, weightLabel, calculatedPrice);
 
-            // Reset weight selector back to ½ KG
-            selectedWeights[id] = 0.5;
-            selectedWeightLabels[id] = '½ KG';
-            const selectorWrapper = document.getElementById(`weight-${id}`);
-            if (selectorWrapper) {
-                selectorWrapper.querySelectorAll('.weight-btn').forEach((b, i) => {
-                    b.classList.toggle('active', i === 0);
-                });
-            }
-
             // Visual feedback on Cart bubble
             animateCartIcon();
         });
     });
 
     function addToCart(id, name, pricePerKg, img, count, weight, weightLabel, calculatedPrice) {
-        // Use a composite key so same prawn with different weight is separate
+        // Direct checkout - only 1 item in the cart at a time
+        cart = [];
         const cartKey = `${id}-${weight}`;
-        const existingItem = cart.find(item => item.cartKey === cartKey);
-        
-        if (existingItem) {
-            existingItem.qty += 1;
-        } else {
-            cart.push({ cartKey, id, name, pricePerKg, price: calculatedPrice, img, count, weight, weightLabel, qty: 1 });
-        }
+        cart.push({ cartKey, id, name, pricePerKg, price: calculatedPrice, img, count, weight, weightLabel, qty: 1 });
         
         updateCartUI();
+        openCart(); // Automatically slide open the drawer
     }
 
     function removeFromCart(cartKey) {
@@ -209,68 +211,92 @@ document.addEventListener('DOMContentLoaded', () => {
         const checkoutOptions = document.getElementById('cart-checkout-options');
         const cartDrawerFooter = document.getElementById('cart-drawer-footer');
 
-        // Calculate Total Items & Total Price
-        let totalItems = 0;
-        let subtotal = 0;
+            // Calculate Total Items & Total Price
+            let totalItems = 0;
+            let subtotal = 0;
+            let prepCharge = 0;
 
-        cart.forEach(item => {
-            totalItems += item.qty;
-            subtotal += item.price * item.qty;
-        });
-
-        // Update Header Cart Count
-        cartCountEl.textContent = totalItems;
-
-        if (cart.length === 0) {
-            // Render Empty Cart Message
-            cartItemsContainer.innerHTML = `
-                <div class="cart-empty-message">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                    <p>Your cart is empty.</p>
-                    <p style="font-size: 12px;">Add some fresh prawns to start your order!</p>
-                </div>
-            `;
-            checkoutOptions.style.display = 'none';
-            cartDrawerFooter.style.display = 'none';
-        } else {
-            // Render Cart Items
-            let itemsHtml = '<div class="cart-items-list">';
             cart.forEach(item => {
-                itemsHtml += `
-                    <div class="cart-item">
-                        <img src="${item.img}" alt="${item.name}" class="cart-item-img">
-                        <div class="cart-item-info">
-                            <span class="cart-item-name">${item.name.replace('Vannamei Prawns ', '')}</span>
-                            <p class="cart-item-count">${item.count} &bull; <strong>${item.weightLabel}</strong></p>
-                            <div class="cart-item-price-row">
-                                <span class="cart-item-price">₹${item.price * item.qty}</span>
-                                <div class="cart-item-qty">
-                                    <button class="cart-item-qty-btn cart-qty-minus" data-cartkey="${item.cartKey}">-</button>
-                                    <span class="cart-item-qty-val">${item.qty}</span>
-                                    <button class="cart-item-qty-btn cart-qty-plus" data-cartkey="${item.cartKey}">+</button>
-                                </div>
-                            </div>
-                        </div>
-                        <button class="cart-item-remove" data-cartkey="${item.cartKey}" aria-label="Remove item">&times;</button>
+                totalItems += item.qty;
+                subtotal += item.price * item.qty;
+            });
+
+            // Get selected prep service
+            const prepServiceSelect = document.getElementById('prep-service');
+            const selectedPrep = prepServiceSelect ? prepServiceSelect.value : 'none';
+            
+            // Peeled or Butterfly Cut service has a charge of 30 rupees per KG
+            if (selectedPrep === 'peeled' || selectedPrep === 'butterfly') {
+                cart.forEach(item => {
+                    prepCharge += Math.round(30 * item.weight * item.qty);
+                });
+            }
+
+            const grandTotal = subtotal + prepCharge;
+
+            // Update Header Cart Count
+            cartCountEl.textContent = totalItems;
+
+            if (cart.length === 0) {
+                // Render Empty Cart Message
+                cartItemsContainer.innerHTML = `
+                    <div class="cart-empty-message">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                        <p>Your cart is empty.</p>
+                        <p style="font-size: 12px;">Add some fresh prawns to start your order!</p>
                     </div>
                 `;
-            });
-            itemsHtml += '</div>';
-            cartItemsContainer.innerHTML = itemsHtml;
+                checkoutOptions.style.display = 'none';
+                cartDrawerFooter.style.display = 'none';
+            } else {
+                // Render Cart Items
+                let itemsHtml = '<div class="cart-items-list">';
+                cart.forEach(item => {
+                    itemsHtml += `
+                        <div class="cart-item">
+                            <img src="${item.img}" alt="${item.name}" class="cart-item-img">
+                            <div class="cart-item-info">
+                                <span class="cart-item-name">${item.name.replace('Vannamei Prawns ', '')}</span>
+                                <p class="cart-item-count">${item.count} &bull; <strong>${item.weightLabel}</strong></p>
+                                <div class="cart-item-price-row">
+                                    <span class="cart-item-price">₹${item.price * item.qty}</span>
+                                    <div class="cart-item-qty">
+                                        <button class="cart-item-qty-btn cart-qty-minus" data-cartkey="${item.cartKey}">-</button>
+                                        <span class="cart-item-qty-val">${item.qty}</span>
+                                        <button class="cart-item-qty-btn cart-qty-plus" data-cartkey="${item.cartKey}">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="cart-item-remove" data-cartkey="${item.cartKey}" aria-label="Remove item">&times;</button>
+                        </div>
+                    `;
+                });
+                itemsHtml += '</div>';
+                cartItemsContainer.innerHTML = itemsHtml;
 
-            // Show details & totals
-            checkoutOptions.style.display = 'flex';
-            cartDrawerFooter.style.display = 'block';
-            cartSubtotalEl.textContent = `₹${subtotal}`;
-            cartTotalEl.textContent = `₹${subtotal}`; // Free delivery & prep service
+                // Show details & totals
+                checkoutOptions.style.display = 'flex';
+                cartDrawerFooter.style.display = 'block';
+                cartSubtotalEl.textContent = `₹${subtotal}`;
+                
+                const prepChargeEl = document.getElementById('cart-prep-charge');
+                if (prepChargeEl) {
+                    prepChargeEl.textContent = prepCharge > 0 ? `₹${prepCharge}` : 'FREE';
+                    if (prepCharge > 0) {
+                        prepChargeEl.style.color = 'var(--text-dark)';
+                    } else {
+                        prepChargeEl.style.color = 'var(--primary)';
+                    }
+                }
+                cartTotalEl.textContent = `₹${grandTotal}`;
 
-            // Update QR Code and check prep service limitations
-            updateUPIQRCode(subtotal);
-            handlePrepServiceChange();
+                // Update QR Code and check prep service limitations
+                updateUPIQRCode(grandTotal);
+                handlePrepServiceChange();
 
-            // Add Event Listeners to Cart Drawer Buttons
-            addCartControlsListeners();
-        }
+                // Add Event Listeners to Cart Drawer Buttons
+                addCartControlsListeners();
+            }
     }
 
     function addCartControlsListeners() {
@@ -339,38 +365,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handlePrepServiceChange() {
-        if (!prepServiceSelect) return;
-        const selectedService = prepServiceSelect.value;
-        if (selectedService === 'peeled' || selectedService === 'butterfly') {
-            // Show alert banner
-            paymentAlert.style.display = 'block';
-            // Hide & disable COD
-            if (codOptionWrapper) {
-                codOptionWrapper.style.display = 'none';
-            }
-            if (payCodRadio) {
-                payCodRadio.disabled = true;
-            }
-            // Auto-select UPI
-            if (payUpiRadio) {
-                payUpiRadio.checked = true;
-                handlePaymentMethodChange('upi');
-            }
-        } else {
-            // Hide alert banner
-            paymentAlert.style.display = 'none';
-            // Show & enable COD
-            if (codOptionWrapper) {
-                codOptionWrapper.style.display = 'block';
-            }
-            if (payCodRadio) {
-                payCodRadio.disabled = false;
-            }
-        }
+        // Cash on Delivery is always available for all preparation services now.
     }
 
     if (prepServiceSelect) {
-        prepServiceSelect.addEventListener('change', handlePrepServiceChange);
+        prepServiceSelect.addEventListener('change', () => {
+            handlePrepServiceChange();
+            updateCartUI();
+        });
     }
 
     // Dynamic QR code generation
@@ -437,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const custName = document.getElementById('cust-name').value.trim();
         const custPhone = document.getElementById('cust-phone').value.trim();
         const custAddress = document.getElementById('cust-address').value.trim();
+        const deliverySlot = document.getElementById('delivery-slot').value;
 
         // Validation
         if (!custName) {
@@ -458,32 +461,41 @@ document.addEventListener('DOMContentLoaded', () => {
         // UPI Advance Payment Verification
         if (paymentMethod === 'upi') {
             if (!screenshotInput || !screenshotInput.files || screenshotInput.files.length === 0) {
-                alert('Peeled, and Butterfly Cut orders require advance payment. Please complete your payment via UPI and upload the screenshot.');
+                alert('Please complete your payment via UPI and upload the screenshot.');
                 return;
             }
         }
 
         // Format Prep Service Text
         const prepServiceLabels = {
-            'none': 'None (Whole Prawns with Shell)',
-            'cleaning': 'Cleaning Only (Cleaned, Shell On)',
-            'peeled': 'Peeled Service (Shell & Head Removed)',
-            'butterfly': 'Butterfly Cut Service (Split Back)'
+            'none': 'None (Whole Prawns with Shell) - Free',
+            'cleaning': 'Cleaning Only (Cleaned, Shell On) - Free',
+            'peeled': 'Peeled Service (Shell & Head Removed) - ₹30/KG',
+            'butterfly': 'Butterfly Cut Service (Split Back) - ₹30/KG'
         };
         const prepLabel = prepServiceLabels[prepService] || 'None';
 
         // Calculate Totals
-        let grandTotal = 0;
+        let subtotal = 0;
+        let prepCharge = 0;
         let itemsText = '';
         
         cart.forEach((item, index) => {
             const itemTotal = item.price * item.qty;
-            grandTotal += itemTotal;
+            subtotal += itemTotal;
             itemsText += `${index + 1}. *${item.name}*\n`;
             itemsText += `   Count size: ${item.count}\n`;
             itemsText += `   Weight: ${item.weightLabel} x ${item.qty} = ${(item.weight * item.qty).toFixed(1)} KG\n`;
             itemsText += `   Price: ₹${item.pricePerKg}/KG → ₹${item.price} for ${item.weightLabel} x${item.qty} = ₹${itemTotal}\n\n`;
         });
+
+        if (prepService === 'peeled' || prepService === 'butterfly') {
+            cart.forEach(item => {
+                prepCharge += Math.round(30 * item.weight * item.qty);
+            });
+        }
+        
+        const grandTotal = subtotal + prepCharge;
 
         // WhatsApp Business Contact Numbers from flyer
         const storeNumber = '918985734989'; // Primary Whatsapp number
@@ -506,15 +518,16 @@ document.addEventListener('DOMContentLoaded', () => {
         message += `👤 *Customer Details:*\n`;
         message += `• *Name:* ${custName}\n`;
         message += `• *Phone:* ${custPhone}\n`;
-        message += `• *Address:* ${custAddress}\n\n`;
+        message += `• *Address:* ${custAddress}\n`;
+        message += `• *Delivery Slot:* ${deliverySlot}\n\n`;
         
         message += `📦 *Order Summary:*\n`;
         message += itemsText;
         
         message += `🔪 *Prep & Custom Cutting:*\n`;
         message += `• *Service Choice:* ${prepLabel}\n`;
-        message += `• *Cost:* FREE\n\n`;
-
+        message += `• *Cost:* ${prepCharge > 0 ? `₹${prepCharge}` : 'FREE'}\n\n`;
+ 
         message += `💳 *Payment Information:*\n`;
         message += paymentText + `\n`;
         
