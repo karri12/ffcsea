@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - FFC Sea Foods</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="config.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #0d4c92; --primary-light: #1a6bbf;
+            --danger: #e53e3e; --success: #38a169; --bg: #f0f4f8;
+            --surface: #ffffff; --surface2: #f7fafc; --border: #e2e8f0;
+            --text: #1a202c; --text-muted: #718096;
+            --shadow: 0 2px 12px rgba(0,0,0,.08); --radius: 12px;
+            --font: 'Inter', sans-serif;
+        }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* LOGIN */
+        #login-screen {
+            display: flex; align-items: center; justify-content: center; min-height: 100vh;
+            background: linear-gradient(135deg, #0d4c92 0%, #1a6bbf 55%, #0ea5e9 100%);
+        }
+        .login-card {
+            background: #fff; border-radius: 20px; padding: 48px 40px;
+            width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,.25); text-align: center;
+        }
+        .login-logo { font-size: 52px; margin-bottom: 14px; }
+        .login-title { font-size: 22px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+        .login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+        .login-card input {
+            display: block; width: 100%; padding: 13px 16px; margin-bottom: 14px;
+            border: 2px solid var(--border); border-radius: 10px; font-size: 15px;
+            outline: none; transition: border-color .2s; font-family: var(--font);
+        }
+        .login-card input:focus { border-color: var(--primary); }
+        .login-btn {
+            width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none;
+            border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;
+            transition: background .2s; font-family: var(--font);
+        }
+        .login-btn:hover { background: var(--primary-light); }
+        .login-error { color: var(--danger); font-size: 13px; margin-top: 12px; display: none; }
+
+        /* ADMIN LAYOUT */
+        #admin-panel { display: none; }
+        .top-bar {
+            position: sticky; top: 0; z-index: 100; background: var(--primary); color: #fff;
+            padding: 14px 28px; display: flex; align-items: center;
+            justify-content: space-between; box-shadow: 0 2px 12px rgba(0,0,0,.2);
+        }
+        .top-bar-title { font-size: 17px; font-weight: 800; }
+        .top-bar-sub { font-size: 11px; opacity: .75; margin-top: 2px; }
+        .top-btn {
+            background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3);
+            border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: background .2s; font-family: var(--font);
+            text-decoration: none; display: inline-block;
+        }
+        .top-btn:hover { background: rgba(255,255,255,.25); }
+        .top-bar-actions { display: flex; gap: 10px; align-items: center; }
+        .main { max-width: 920px; margin: 0 auto; padding: 32px 20px 64px; }
+
+        /* CARDS */
+        .card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 26px; overflow: hidden; }
+        .card-head {
+            padding: 18px 26px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 12px;
+        }
+        .card-icon { font-size: 22px; }
+        .card-title { font-size: 16px; font-weight: 700; }
+        .card-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+        .card-body { padding: 22px 26px; }
+
+        /* FORMS */
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .fgroup { display: flex; flex-direction: column; gap: 6px; }
+        .fgroup label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; }
+        .fgroup input {
+            padding: 11px 13px; border: 2px solid var(--border); border-radius: 10px;
+            font-size: 14px; font-family: var(--font); outline: none; transition: border-color .2s;
+        }
+        .fgroup input:focus { border-color: var(--primary); }
+        .pfx-wrap { display: flex; }
+        .pfx-wrap .pfx {
+            background: var(--bg); border: 2px solid var(--border); border-right: none;
+            padding: 11px 12px; border-radius: 10px 0 0 10px; font-size: 14px; color: var(--text-muted);
+        }
+        .pfx-wrap input { border-radius: 0 10px 10px 0; flex: 1; }
+
+        /* PRODUCT ROWS */
+        .prow {
+            border: 2px solid var(--border); border-radius: 12px; padding: 20px;
+            margin-bottom: 18px; background: var(--surface2); transition: border-color .2s;
+        }
+        .prow:hover { border-color: var(--primary-light); }
+        .prow:last-child { margin-bottom: 0; }
+        .prow-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+        .pthumb { width: 68px; height: 68px; border-radius: 10px; object-fit: cover; border: 2px solid var(--border); }
+        .prow-name { font-size: 15px; font-weight: 700; color: var(--primary); }
+        .pbadge { font-size: 11px; background: var(--primary); color: #fff; padding: 2px 9px; border-radius: 20px; margin-left: 6px; }
+
+        /* IMAGE UPLOAD */
+        .upload-box {
+            border: 2px dashed var(--border); border-radius: 10px; padding: 16px;
+            text-align: center; position: relative; cursor: pointer;
+            transition: border-color .2s, background .2s; overflow: hidden;
+        }
+        .upload-box:hover { border-color: var(--primary); background: #eef4ff; }
+        .upload-box input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+        .upload-icon { font-size: 26px; margin-bottom: 4px; }
+        .upload-hint { font-size: 12px; color: var(--text-muted); }
+        .upload-fname { font-size: 12px; color: var(--primary); font-weight: 600; margin-top: 4px; }
+
+        /* PREP TABLE */
+        .ptable { width: 100%; border-collapse: collapse; }
+        .ptable th { text-align: left; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; padding: 0 12px 10px; }
+        .ptable td { padding: 10px 12px; }
+        .ptable tr { border-bottom: 1px solid var(--border); }
+        .ptable tr:last-child { border-bottom: none; }
+        .ptable input { width: 100%; padding: 9px 11px; border: 2px solid var(--border); border-radius: 8px; font-size: 14px; font-family: var(--font); outline: none; }
+        .ptable input:focus { border-color: var(--primary); }
+        .svc-name { font-weight: 600; font-size: 14px; }
+        .svc-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+        /* BUTTONS */
+        .btn-save {
+            background: var(--primary); color: #fff; border: none; border-radius: 10px;
+            padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer;
+            transition: background .2s, transform .1s; font-family: var(--font);
+        }
+        .btn-save:hover { background: var(--primary-light); }
+        .btn-save:active { transform: scale(.97); }
+        .btn-danger {
+            background: transparent; color: var(--danger); border: 2px solid var(--danger);
+            border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: background .2s; font-family: var(--font);
+        }
+        .btn-danger:hover { background: #fff5f5; }
+        .actions { display: flex; gap: 12px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+        .smsg { font-size: 13px; font-weight: 600; display: none; }
+        .smsg.ok { color: var(--success); }
+        .smsg.err { color: var(--danger); }
+        .hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+        @media (max-width: 600px) {
+            .grid2 { grid-template-columns: 1fr; }
+            .top-bar { padding: 12px 14px; }
+            .main { padding: 18px 12px 48px; }
+            .card-body { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+    <div class="login-card">
+        <div class="login-logo">&#x1F990;</div>
+        <h1 class="login-title">FFC Sea Foods</h1>
+        <p class="login-sub">Admin Panel &mdash; Restricted Access</p>
+        <input type="text" id="lu" placeholder="Username" autocomplete="username">
+        <input type="password" id="lp" placeholder="Password" autocomplete="current-password">
+        <button class="login-btn" onclick="doLogin()">Login</button>
+        <p class="login-error" id="lerr">&#10060; Invalid credentials. Please try again.</p>
+    </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin-panel">
+    <div class="top-bar">
+        <div>
+            <div class="top-bar-title">&#x1F990; FFC Sea Foods &mdash; Admin</div>
+            <div class="top-bar-sub">Manage products, pricing, delivery &amp; services</div>
+        </div>
+        <div class="top-bar-actions">
+            <a href="index.html" target="_blank" class="top-btn">&#127760; View Website</a>
+            <button class="top-btn" onclick="doLogout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="main">
+
+        <!-- PRODUCTS SECTION -->
+        <div class="card">
+            <div class="card-head">
+                <span class="card-icon">&#x1F4E6;</span>
+                <div>
+                    <div class="card-title">Product Management</div>
+                    <div class="card-sub">Update product names, prices per KG, and images</div>
+                </div>
+            </div>
+            <div class="card-body" id="products-body"></div>
+        </div>
+
+        <!-- DELIVERY SECTION -->
+        <div class="card">
+            <div class="card-head">
+                <span class="card-icon">&#x1F69A;</span>
+                <div>
+                    <div class="card-title">Delivery Charge</div>
+                    <div class="card-sub">Set to 0 for FREE delivery</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="grid2">
+                    <div class="fgroup">
+                        <label>Delivery Charge (Rs.)</label>
+                        <div class="pfx-wrap">
+                            <span class="pfx">Rs.</span>
+                            <input type="number" id="delivery-charge" min="0" step="5" placeholder="0">
+                        </div>
+                        <p class="hint">Enter 0 for FREE delivery</p>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="btn-save" onclick="saveDelivery()">&#x1F4BE; Save Delivery Settings</button>
+                    <span class="smsg" id="delivery-status"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PREP SERVICES SECTION -->
+        <div class="card">
+            <div class="card-head">
+                <span class="card-icon">&#x1F52A;</span>
+                <div>
+                    <div class="card-title">Preparation Service Charges</div>
+                    <div class="card-sub">Charge added per KG of prawns (0 = FREE)</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="ptable">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th style="width:180px;">Charge per KG (Rs.)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prep-tbody"></tbody>
+                </table>
+                <div class="actions">
+                    <button class="btn-save" onclick="savePrepServices()">&#x1F4BE; Save Service Charges</button>
+                    <span class="smsg" id="prep-status"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHANGE PASSWORD SECTION -->
+        <div class="card">
+            <div class="card-head">
+                <span class="card-icon">&#x1F512;</span>
+                <div>
+                    <div class="card-title">Change Admin Credentials</div>
+                    <div class="card-sub">Update your admin login username and password</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="grid2">
+                    <div class="fgroup">
+                        <label>New Username</label>
+                        <input type="text" id="new-user" placeholder="Enter new username">
+                    </div>
+                    <div class="fgroup">
+                        <label>New Password</label>
+                        <input type="password" id="new-pass" placeholder="Enter new password">
+                    </div>
+                </div>
+                <p class="hint">Default credentials &mdash; Username: <strong>admin</strong> / Password: <strong>ffc2024</strong></p>
+                <div class="actions">
+                    <button class="btn-save" onclick="savePassword()">&#x1F512; Update Credentials</button>
+                    <button class="btn-danger" onclick="resetAll()">&#x26A0;&#xFE0F; Reset All to Defaults</button>
+                    <span class="smsg" id="pass-status"></span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// ── AUTH ──────────────────────────────────────────
+var AUTH_KEY = 'ffc_admin_auth';
+var DEFAULT_CREDS = { username: 'admin', password: 'ffc2024' };
+
+function getCreds() {
+    try { var s = localStorage.getItem(AUTH_KEY); return s ? JSON.parse(s) : DEFAULT_CREDS; }
+    catch(e) { return DEFAULT_CREDS; }
+}
+function doLogin() {
+    var user = document.getElementById('lu').value.trim();
+    var pass = document.getElementById('lp').value;
+    var c = getCreds();
+    if (user === c.username && pass === c.password) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('admin-panel').style.display = 'block';
+        loadAll();
+    } else {
+        document.getElementById('lerr').style.display = 'block';
+    }
+}
+function doLogout() {
+    document.getElementById('admin-panel').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('lu').value = '';
+    document.getElementById('lp').value = '';
+    document.getElementById('lerr').style.display = 'none';
+}
+document.getElementById('lp').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin();
+});
+
+// ── LOAD ALL ─────────────────────────────────────
+var cfg;
+function loadAll() {
+    cfg = FFCConfig.getConfig();
+    renderProducts();
+    renderDelivery();
+    renderPrepServices();
+}
+
+// ── PRODUCTS ─────────────────────────────────────
+function renderProducts() {
+    var container = document.getElementById('products-body');
+    var products = cfg.products;
+    var ids = Object.keys(products);
+    var html = '';
+    for (var i = 0; i < ids.length; i++) {
+        var id = ids[i];
+        var p = products[id];
+        html += '<div class="prow" id="prow-' + id + '">';
+        html += '<div class="prow-head">';
+        html += '<img src="' + p.image + '" class="pthumb" id="pthumb-' + id + '" alt="' + p.name + '">';
+        html += '<div><span class="prow-name">' + p.name + '</span>';
+        html += '<span class="pbadge">' + p.count + '</span></div>';
+        html += '</div>';
+        html += '<div class="grid2">';
+        html += '<div class="fgroup"><label>Product Name</label><input type="text" id="pname-' + id + '" value="' + p.name + '"></div>';
+        html += '<div class="fgroup"><label>Count Label</label><input type="text" id="pcount-' + id + '" value="' + p.count + '"></div>';
+        html += '<div class="fgroup"><label>Price per KG (Rs.)</label><div class="pfx-wrap"><span class="pfx">Rs.</span><input type="number" id="pprice-' + id + '" value="' + p.pricePerKg + '" min="0" step="1"></div></div>';
+        html += '<div class="fgroup"><label>Product Image</label>';
+        html += '<div class="upload-box">';
+        html += '<input type="file" id="pimg-' + id + '" accept="image/*" data-pid="' + id + '" onchange="handleImg(this)">';
+        html += '<div class="upload-icon">&#x1F5BC;&#xFE0F;</div>';
+        html += '<div class="upload-hint">Click to upload new image</div>';
+        html += '<div class="upload-fname" id="pfname-' + id + '">Current: ' + p.image.split('/').pop() + '</div>';
+        html += '</div></div>';
+        html += '</div>';
+        html += '<div class="actions"><button class="btn-save" onclick="saveProduct(\'' + id + '\')">&#x1F4BE; Save ' + p.name + '</button>';
+        html += '<span class="smsg" id="pstatus-' + id + '"></span></div>';
+        html += '</div>';
+    }
+    container.innerHTML = html;
+}
+
+function handleImg(input) {
+    var pid = input.getAttribute('data-pid');
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var url = e.target.result;
+        document.getElementById('pthumb-' + pid).src = url;
+        document.getElementById('pfname-' + pid).textContent = file.name + ' (ready to save)';
+        cfg.products[pid]._pendingImage = url;
+    };
+    reader.readAsDataURL(file);
+}
+
+function saveProduct(id) {
+    var name  = document.getElementById('pname-' + id).value.trim();
+    var count = document.getElementById('pcount-' + id).value.trim();
+    var price = parseInt(document.getElementById('pprice-' + id).value);
+    if (!name || !count || isNaN(price) || price < 0) {
+        showStatus('pstatus-' + id, 'Please fill all fields correctly.', false);
+        return;
+    }
+    cfg.products[id].name = name;
+    cfg.products[id].count = count;
+    cfg.products[id].pricePerKg = price;
+    if (cfg.products[id]._pendingImage) {
+        cfg.products[id].image = cfg.products[id]._pendingImage;
+        delete cfg.products[id]._pendingImage;
+        document.getElementById('pfname-' + id).textContent = 'Image saved!';
+    }
+    var ok = FFCConfig.saveConfig(cfg);
+    showStatus('pstatus-' + id, ok ? 'Saved!' : 'Save failed.', ok);
+}
+
+// ── DELIVERY ─────────────────────────────────────
+function renderDelivery() {
+    document.getElementById('delivery-charge').value = (cfg.delivery.charge != null) ? cfg.delivery.charge : 0;
+}
+function saveDelivery() {
+    var charge = parseInt(document.getElementById('delivery-charge').value);
+    if (isNaN(charge) || charge < 0) { showStatus('delivery-status', 'Enter a valid number (0 for free).', false); return; }
+    cfg.delivery.charge = charge;
+    showStatus('delivery-status', FFCConfig.saveConfig(cfg) ? 'Saved!' : 'Save failed.', FFCConfig.saveConfig(cfg));
+}
+
+// ── PREP SERVICES ─────────────────────────────────
+var PREP_META = {
+    none:      { label: 'No Service',     desc: 'Whole Prawns with Shell' },
+    cleaning:  { label: 'Cleaning Only',  desc: 'Cleaned, Shell On' },
+    peeled:    { label: 'Peeled Service', desc: 'Shell and Head Removed' },
+    butterfly: { label: 'Butterfly Cut',  desc: 'Split Back' }
+};
+function renderPrepServices() {
+    var tbody = document.getElementById('prep-tbody');
+    var html = '';
+    var keys = Object.keys(cfg.prepServices);
+    for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var svc = cfg.prepServices[key];
+        var meta = PREP_META[key] || { label: key, desc: '' };
+        html += '<tr>';
+        html += '<td><div class="svc-name">' + meta.label + '</div><div class="svc-desc">' + meta.desc + '</div></td>';
+        html += '<td><div style="display:flex;align-items:center;gap:6px;"><span style="color:var(--text-muted)">Rs.</span>';
+        html += '<input type="number" id="prep-' + key + '" value="' + svc.chargePerKg + '" min="0" step="5"></div></td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+function savePrepServices() {
+    var keys = Object.keys(cfg.prepServices);
+    var valid = true;
+    for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var val = parseInt(document.getElementById('prep-' + key).value);
+        if (isNaN(val) || val < 0) { valid = false; break; }
+        cfg.prepServices[key].chargePerKg = val;
+    }
+    if (!valid) { showStatus('prep-status', 'Please enter valid numbers (0 for free).', false); return; }
+    showStatus('prep-status', FFCConfig.saveConfig(cfg) ? 'Saved!' : 'Save failed.', FFCConfig.saveConfig(cfg));
+}
+
+// ── PASSWORD ──────────────────────────────────────
+function savePassword() {
+    var user = document.getElementById('new-user').value.trim();
+    var pass = document.getElementById('new-pass').value;
+    if (!user || !pass) { showStatus('pass-status', 'Please fill both fields.', false); return; }
+    try {
+        localStorage.setItem(AUTH_KEY, JSON.stringify({ username: user, password: pass }));
+        showStatus('pass-status', 'Credentials updated! Use them next login.', true);
+        document.getElementById('new-user').value = '';
+        document.getElementById('new-pass').value = '';
+    } catch(e) { showStatus('pass-status', 'Could not save credentials.', false); }
+}
+
+// ── RESET ALL ─────────────────────────────────────
+function resetAll() {
+    if (!confirm('This will reset ALL shop settings (prices, images, delivery, services) to defaults. Continue?')) return;
+    localStorage.removeItem(FFCConfig.FFC_CONFIG_KEY);
+    localStorage.removeItem(AUTH_KEY);
+    alert('All settings have been reset to defaults. Please log in again.');
+    doLogout();
+}
+
+// ── HELPER ───────────────────────────────────────
+function showStatus(id, msg, ok) {
+    var el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = 'smsg ' + (ok ? 'ok' : 'err');
+    el.style.display = 'inline';
+    setTimeout(function() { el.style.display = 'none'; }, 4000);
+}
+</script>
+</body>
+</html>

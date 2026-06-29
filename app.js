@@ -110,6 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------------------
     let cart = [];
 
+    // Load shop config (admin settings from localStorage, or defaults)
+    const shopCfg = (typeof FFCConfig !== 'undefined') ? FFCConfig.getConfig() : null;
+
     // Selected weights per product (default 0.5 = half kg)
     const selectedWeights = {
         'prawn-100': 0.5,
@@ -122,11 +125,28 @@ document.addEventListener('DOMContentLoaded', () => {
         'prawn-200': '½ KG'
     };
 
+    // basePrices loaded from admin config (falls back to defaults)
     const basePrices = {
-        'prawn-100': 300,
-        'prawn-150': 250,
-        'prawn-200': 200
+        'prawn-100': shopCfg ? shopCfg.products['prawn-100'].pricePerKg : 300,
+        'prawn-150': shopCfg ? shopCfg.products['prawn-150'].pricePerKg : 250,
+        'prawn-200': shopCfg ? shopCfg.products['prawn-200'].pricePerKg : 200
     };
+
+    // Helper: get prep service charge per KG from config
+    function getPrepChargePerKg(serviceKey) {
+        if (shopCfg && shopCfg.prepServices && shopCfg.prepServices[serviceKey]) {
+            return shopCfg.prepServices[serviceKey].chargePerKg || 0;
+        }
+        // fallback defaults
+        if (serviceKey === 'peeled' || serviceKey === 'butterfly') return 30;
+        return 0;
+    }
+
+    // Helper: get delivery charge from config
+    function getDeliveryCharge() {
+        if (shopCfg && shopCfg.delivery) return shopCfg.delivery.charge || 0;
+        return 0;
+    }
 
     // Weight Selector Button handlers
     document.querySelectorAll('.weight-btn').forEach(btn => {
@@ -225,10 +245,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const prepServiceSelect = document.getElementById('prep-service');
             const selectedPrep = prepServiceSelect ? prepServiceSelect.value : 'none';
             
-            // Peeled or Butterfly Cut service has a charge of 30 rupees per KG
-            if (selectedPrep === 'peeled' || selectedPrep === 'butterfly') {
+            // Get prep charge rate from admin config
+            const prepRatePerKg = getPrepChargePerKg(selectedPrep);
+            if (prepRatePerKg > 0) {
                 cart.forEach(item => {
-                    prepCharge += Math.round(30 * item.weight * item.qty);
+                    prepCharge += Math.round(prepRatePerKg * item.weight * item.qty);
                 });
             }
 
@@ -466,14 +487,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Format Prep Service Text
-        const prepServiceLabels = {
-            'none': 'None (Whole Prawns with Shell) - Free',
-            'cleaning': 'Cleaning Only (Cleaned, Shell On) - Free',
-            'peeled': 'Peeled Service (Shell & Head Removed) - ₹30/KG',
-            'butterfly': 'Butterfly Cut Service (Split Back) - ₹30/KG'
-        };
-        const prepLabel = prepServiceLabels[prepService] || 'None';
+        // Format Prep Service Text (dynamic from config)
+        function buildPrepLabel(key) {
+            const rate = getPrepChargePerKg(key);
+            const rateStr = rate > 0 ? '₹' + rate + '/KG' : 'Free';
+            const names = {
+                'none': 'None (Whole Prawns with Shell)',
+                'cleaning': 'Cleaning Only (Cleaned, Shell On)',
+                'peeled': 'Peeled Service (Shell & Head Removed)',
+                'butterfly': 'Butterfly Cut Service (Split Back)'
+            };
+            return (names[key] || key) + ' - ' + rateStr;
+        }
+        const prepLabel = buildPrepLabel(prepService);
 
         // Calculate Totals
         let subtotal = 0;
@@ -489,13 +515,15 @@ document.addEventListener('DOMContentLoaded', () => {
             itemsText += `   Price: ₹${item.pricePerKg}/KG → ₹${item.price} for ${item.weightLabel} x${item.qty} = ₹${itemTotal}\n\n`;
         });
 
-        if (prepService === 'peeled' || prepService === 'butterfly') {
+        const prepRateWA = getPrepChargePerKg(prepService);
+        if (prepRateWA > 0) {
             cart.forEach(item => {
-                prepCharge += Math.round(30 * item.weight * item.qty);
+                prepCharge += Math.round(prepRateWA * item.weight * item.qty);
             });
         }
-        
-        const grandTotal = subtotal + prepCharge;
+
+        const deliveryCharge = getDeliveryCharge();
+        const grandTotal = subtotal + prepCharge + deliveryCharge;
 
         // WhatsApp Business Contact Numbers from flyer
         const storeNumber = '918985734989'; // Primary Whatsapp number
@@ -531,9 +559,10 @@ document.addEventListener('DOMContentLoaded', () => {
         message += `💳 *Payment Information:*\n`;
         message += paymentText + `\n`;
         
+        const deliveryChargeWA = getDeliveryCharge();
         message += `===============================\n`;
         message += `💰 *Grand Total:* *₹${grandTotal}*\n`;
-        message += `🚚 *Delivery:* FREE (Tallarevu / Kakinada)\n`;
+        message += `🚚 *Delivery:* ${deliveryChargeWA > 0 ? '₹' + deliveryChargeWA : 'FREE'} (Tallarevu / Kakinada)\n`;
         message += `===============================\n\n`;
         message += `Thank you for ordering with FFC Sea Foods! Please reply to confirm and process this order.`;
 
